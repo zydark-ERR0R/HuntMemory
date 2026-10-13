@@ -1,0 +1,43 @@
+name: Build HuntMemory KPM
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '**/*.c'
+      - '**/*.h'
+      - 'Makefile'
+      - '.github/workflows/build.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Install cross-compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Clone KernelPatch if submodule missing
+        run: |
+          if [ ! -d "KernelPatch" ] || [ -z "$(ls -A KernelPatch 2>/dev/null)" ]; then
+            git clone --depth=1 https://github.com/bmax121/KernelPatch.git KernelPatch
+          fi
+
+      - name: Build KPM
+        run: |
+          make TARGET_COMPILE=aarch64-linux-gnu- KP_DIR=./KernelPatch
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hmkpm-kpm
+          path: |
+            *.kpm
+            **/*.kpm
+          if-no-files-found: warn
